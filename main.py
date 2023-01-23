@@ -18,6 +18,7 @@ from kivymd.uix.relativelayout import MDRelativeLayout
 from kivy.uix.screenmanager import ScreenManager, Screen
 from kivy.uix.image import Image
 from kivy.uix.popup import Popup
+from kivy.uix.label import Label
 
 # import other things
 
@@ -54,8 +55,7 @@ class MainWindow(MDRelativeLayout):
 class TeamLabel(MDGridLayout):
     def __init__(self, team_name, pos_hint, **kwargs):
         super().__init__(cols=1, adaptive_size = True, md_bg_color=[.7, .7, .7, 1], pos_hint=pos_hint, **kwargs)
-        self.team_name_lbl = MDLabel(text=team_name, halign='center', font_style='H4', max_lines=1)
-        self.team_name_lbl = MDLabel(text=team_name, halign='center', font_style='H4', max_lines=1,adaptive_size=True)
+        self.team_name_lbl = MDLabel(text=team_name, halign='center', font_style='H5', max_lines=1, adaptive_size=True)
         self.add_widget(self.team_name_lbl)
 
     def change_pos(self, new_pos):
@@ -100,13 +100,15 @@ class SingleGame(MDRelativeLayout):
         self.odds_begin = True
         self.max_points = 21
         self.score = [0, 0]
-        self.team1 = TeamLabel('time 1', {'center': [.25, .5]})
-        self.team2 = TeamLabel('time 2', {'center': [.75, .5]})
-        self.image = Image(source=os.path.join('.', 'images', 'court.jpg'), size_hint = [.9,.8], pos_hint={'center':[.5,.5]})
+        self.team1 = TeamLabel('time_1', {'center': [.25, .5]})
+        self.team2 = TeamLabel('time_2', {'center': [.75, .5]})
+        self.image = Image(source=os.path.join('.', 'images', 'court.jpg'), size_hint = [.9,.7], pos_hint={'center':[.5,.5]})
         self.shuttlecock = Image(source=os.path.join('.', 'images', 'volante.png'), size_hint=[.1, .1],
                                  pos_hint={'center': [.5, .5]})
         self.score_t1 = ScoreLabel(str(0), {'center': [.05, .5]})
         self.score_t2 = ScoreLabel(str(0), {'center': [.95, .5]})
+
+        self.tittle = MDLabel(text='1x1', font_style='H5', adaptive_size=True, pos_hint={'center': [.5, .93]},max_lines=1)
 
         # buttons
 
@@ -116,7 +118,8 @@ class SingleGame(MDRelativeLayout):
         for val in [7,11,15,21, 'inf']:
             grid.add_widget(MDRoundFlatButton(text=str(val), on_release=partial(self.change_max_points, val),halign='center',font_style='H5',size_hint=[1,1]))
         self.popup = Popup(title = f'Pontuação',content=grid, size_hint=[.5,.8],title_align='center',title_size=MDLabel(font_style="H4").font_size)
-        self.pts_btn = MDRectangleFlatButton(text=f'Pontuação: {float("inf")}', size_hint=[.2, .1],
+        self.pts_btn = MDRectangleFlatButton(line_color=[0,0,0,0], md_bg_color = [.7,0.7,0.7,1],
+                                             text=f'Pontuação: {float("inf")}', size_hint=[.2, .1],
                                              pos_hint={'center': [.15, .93]}, font_style='H5',
                                              on_release=partial(self.popup.open), text_color=[0, 0, 0, 1])
         self.build()
@@ -124,29 +127,30 @@ class SingleGame(MDRelativeLayout):
     def build(self):
         self.clear_widgets()
         self.add_widget(self.image)
-        self.add_widget(MDLabel(text='1x1', font_style='H3', adaptive_size=True, pos_hint={'center': [.5, .93]}))
-        self.add_widget(MDRectangleFlatButton(text='Voltar', font_style='H5', size_hint=[.2, .1], pos_hint={'center': [.85, .93]},
+        self.add_widget(self.tittle)
+        self.add_widget(MDRectangleFlatButton(line_color=[0,0,0,0], md_bg_color = [.7,0.7,0.7,1],text='Voltar', font_style='H5', size_hint=[.2, .1], pos_hint={'center': [.85, .93]},
                                               on_release=partial(self.change_window, 'main'),text_color = [0,0,0,1]))
         self.add_widget(self.pts_btn)  # ! preciso fazer a função para criar uma popup
         self.add_widget(self.team1)
         self.add_widget(self.team2)
 
         # buttons for increase points
-        self.add_widget(MDRectangleFlatButton(pos_hint={'center': [.25, .5]}, size_hint=[.5, .65],
+        self.add_widget(MDRectangleFlatButton(line_color=[0,0,0,0], pos_hint={'center': [.25, .5]}, size_hint=[.5, .65],
                                               on_release=partial(self.set_points, 1)))
-        self.add_widget(MDRectangleFlatButton(pos_hint={'center': [.75, .5]}, size_hint=[.5, .65],
+        self.add_widget(MDRectangleFlatButton(line_color=[0,0,0,0], pos_hint={'center': [.75, .5]}, size_hint=[.5, .65],
                                               on_release=partial(self.set_points, 2)))
 
         # Button for back point
         self.add_widget(
-            MDRectangleFlatButton(text=f'Let it', size_hint=[.2, .1],
+            MDRectangleFlatButton(line_color=[0,0,0,0], md_bg_color = [.7,0.7,0.7,1],
+                                  text=f'Let it', size_hint=[.2, .1],
                                   pos_hint={'center': [.15, .08]}, font_style='H5',
                                   on_release=partial(self.back_point), text_color=[0, 0, 0, 1]))
 
         self.add_widget(self.score_t1)
         self.add_widget(self.score_t2)
         self.add_widget(self.shuttlecock)
-        self.add_widget(MDRectangleFlatButton(text='^Acabar o set^', on_release=self.end_set, font_style= 'H3', text_color = [0,0,0,1], pos_hint={'center': [.5, .08]}))
+        self.add_widget(MDRectangleFlatButton(line_color=[0,0,0,0], md_bg_color = [.7,0.7,0.7,1],text='^Acabar o set^', on_release=self.end_set, font_style= 'H3', text_color = [0,0,0,1], pos_hint={'center': [.5, .08]}))
         self.set_points()
 
     def reset_things(self, *args):
@@ -256,11 +260,12 @@ class SingleGame(MDRelativeLayout):
 # double Window
 class DoubleGame(SingleGame):
     def __init__(self,*args, **kwargs):
-        self.team3 = TeamLabel('time 1.2', {'center': [.25, .38]})
-        self.team4 = TeamLabel('time 2.2', {'center': [.75, .38]})
+        self.team3 = TeamLabel('time_1.2', {'center': [.25, .38]})
+        self.team4 = TeamLabel('time_2.2', {'center': [.75, .38]})
         super().__init__(*args, **kwargs)
-        self.team1 = TeamLabel('time 1.1', {'center': [.25, .62]})
-        self.team2 = TeamLabel('time 2.1', {'center': [.75, .62]})
+        self.tittle.text='2x2'
+        self.team1 = TeamLabel('time_1.1', {'center': [.25, .62]})
+        self.team2 = TeamLabel('time_2.1', {'center': [.75, .62]})
         self.build()
 
     def build(self):
