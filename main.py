@@ -20,6 +20,7 @@ from kivy.uix.image import Image
 from kivy.uix.popup import Popup
 from kivymd.uix.textfield import MDTextField
 from kivy.uix.label import Label
+from kivy.uix.button import Button
 
 # import other things
 
@@ -165,6 +166,7 @@ class SingleGame(MDRelativeLayout):
                                   pos_hint={'center': [.15, .08]}, font_style='H5',
                                   on_release=partial(self.back_point), text_color=[0, 0, 0, 1]))
 
+
         self.add_widget(self.score_t1)
         self.add_widget(self.score_t2)
         self.add_widget(self.shuttlecock)
@@ -227,6 +229,7 @@ class SingleGame(MDRelativeLayout):
         elif pts % 2 == 1 and last_pt == 1:
             y = .38
 
+        # self.shuttlecock.pos_hint = {'center': [x, y]}
         self.shuttlecock.pos_hint = {'center': [x, y]}
 
     def change_text_score(self):
