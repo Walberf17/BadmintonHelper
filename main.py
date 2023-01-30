@@ -1,7 +1,7 @@
 """
 This is a badminton points counter
 """
-__version__ = "3.0.1"
+__version__ = "3.2.6"
 
 
 import os
@@ -18,6 +18,7 @@ from kivymd.uix.relativelayout import MDRelativeLayout
 from kivy.uix.screenmanager import ScreenManager, Screen
 from kivy.uix.image import Image
 from kivy.uix.popup import Popup
+from kivymd.uix.textfield import MDTextField
 from kivy.uix.label import Label
 
 # import other things
@@ -50,12 +51,11 @@ class MainWindow(MDRelativeLayout):
     def change_window(self, new_window, *args):
         self.app.sm.current = new_window
 
-
 # helpers widgets Window
 class TeamLabel(MDGridLayout):
     def __init__(self, team_name, pos_hint, **kwargs):
-        super().__init__(cols=1, adaptive_size = True, md_bg_color=[.7, .7, .7, 1], pos_hint=pos_hint, **kwargs)
-        self.team_name_lbl = MDLabel(text=team_name, halign='center', font_style='H5', max_lines=1, adaptive_size=True)
+        super().__init__(cols=1, md_bg_color=[.7, .7, .7, 1], pos_hint=pos_hint, adaptive_size=True, size_hint=[.2,.1], **kwargs)
+        self.team_name_lbl = MDLabel(text=team_name, valign='center', halign='center', font_style='H5', max_lines=1, size_hint=[1, 1])
         self.add_widget(self.team_name_lbl)
 
     def change_pos(self, new_pos):
@@ -90,8 +90,18 @@ class ScoreLabel(MDGridLayout):
     def get_pos_hint(self):
         return self.pos
 
-
 # Single Window
+class NameInput(MDTextField):
+    def __init__(self, name, label_team, *args, **kwargs):
+        super().__init__(text_color_normal=[0,0,0,1],text=name, mode='round', fill_color_normal=[1,1,1,1], *args, **kwargs)
+        self.label_team = label_team
+
+    def change_label(self):
+        if self.text:
+            self.label_team.change_label(self.text)
+
+
+
 class SingleGame(MDRelativeLayout):
     def __init__(self, app, **kwargs):
         super().__init__(**kwargs)
@@ -102,13 +112,13 @@ class SingleGame(MDRelativeLayout):
         self.score = [0, 0]
         self.team1 = TeamLabel('time_1', {'center': [.25, .5]})
         self.team2 = TeamLabel('time_2', {'center': [.75, .5]})
-        self.image = Image(source=os.path.join('.', 'images', 'court.jpg'), size_hint = [.9,.7], pos_hint={'center':[.5,.5]})
+        self.image = Image(source=os.path.join('.', 'images', 'court.jpg'), size_hint = [.9,.7], pos_hint={'center':[.5,.5]}, keep_ratio=False)
         self.shuttlecock = Image(source=os.path.join('.', 'images', 'volante.png'), size_hint=[.1, .1],
                                  pos_hint={'center': [.5, .5]})
         self.score_t1 = ScoreLabel(str(0), {'center': [.05, .5]})
         self.score_t2 = ScoreLabel(str(0), {'center': [.95, .5]})
 
-        self.tittle = MDLabel(text='1x1', font_style='H5', adaptive_size=True, pos_hint={'center': [.5, .93]},max_lines=1)
+        self.tittle = MDLabel(text='Simples', font_style='H3', pos_hint={'center': [.5, .93]}, max_lines=1, halign='center', valign='center')
 
         # buttons
 
@@ -119,9 +129,17 @@ class SingleGame(MDRelativeLayout):
             grid.add_widget(MDRoundFlatButton(text=str(val), on_release=partial(self.change_max_points, val),halign='center',font_style='H5',size_hint=[1,1]))
         self.popup = Popup(title = f'Pontuação',content=grid, size_hint=[.5,.8],title_align='center',title_size=MDLabel(font_style="H4").font_size)
         self.pts_btn = MDRectangleFlatButton(line_color=[0,0,0,0], md_bg_color = [.7,0.7,0.7,1],
-                                             text=f'Pontuação: {float("inf")}', size_hint=[.2, .1],
+                                             text=f'Pontuação: 21', size_hint=[.2, .1],
                                              pos_hint={'center': [.15, .93]}, font_style='H5',
                                              on_release=partial(self.popup.open), text_color=[0, 0, 0, 1])
+
+        # names popup
+        names_grid = MDGridLayout(cols=2, adaptive_size=True, size_hint=[1,1], spacing=10, padding=[10]*4)
+        names_grid.add_widget(NameInput(name='Player1', label_team=self.team1))
+        names_grid.add_widget(NameInput(name='Player2', label_team=self.team2))
+
+        self.names_popup = Popup(pos_hint={'center':[.5, .3]},on_dismiss=self.set_players_name, title=f'Nome dos Competidores', content=names_grid, size_hint=[.6,1], title_align='center',title_size=MDLabel(font_style="H4").font_size)
+
         self.build()
 
     def build(self):
@@ -152,6 +170,12 @@ class SingleGame(MDRelativeLayout):
         self.add_widget(self.shuttlecock)
         self.add_widget(MDRectangleFlatButton(line_color=[0,0,0,0], md_bg_color = [.7,0.7,0.7,1],text='^Acabar o set^', on_release=self.end_set, font_style= 'H3', text_color = [0,0,0,1], pos_hint={'center': [.5, .08]}))
         self.set_points()
+        # self.names_popup.open()
+
+    @staticmethod
+    def set_players_name(obj):
+        for widget in obj.content.children:
+            widget.change_label()
 
     def reset_things(self, *args):
         self.all_points = list()
@@ -260,12 +284,21 @@ class SingleGame(MDRelativeLayout):
 # double Window
 class DoubleGame(SingleGame):
     def __init__(self,*args, **kwargs):
-        self.team3 = TeamLabel('time_1.2', {'center': [.25, .38]})
-        self.team4 = TeamLabel('time_2.2', {'center': [.75, .38]})
+        self.team3 = TeamLabel('time 1.2', {'center': [.25, .38]})
+        self.team4 = TeamLabel('time 2.2', {'center': [.75, .38]})
         super().__init__(*args, **kwargs)
-        self.tittle.text='2x2'
-        self.team1 = TeamLabel('time_1.1', {'center': [.25, .62]})
-        self.team2 = TeamLabel('time_2.1', {'center': [.75, .62]})
+        self.tittle.text='Duplas'
+        self.team1 = TeamLabel('time 1.1', {'center': [.25, .62]})
+        self.team2 = TeamLabel('time 2.1', {'center': [.75, .62]})
+
+
+        names_grid = MDGridLayout(cols=2, adaptive_size=True, size_hint=[1, 1], spacing=80, padding=[10] * 4, id='names_grid')
+        names_grid.add_widget(NameInput(name='Time 1.1', label_team=self.team1))
+        names_grid.add_widget(NameInput(name='Time 2.1', label_team=self.team2))
+        names_grid.add_widget(NameInput(name='Time 1.2', label_team=self.team3))
+        names_grid.add_widget(NameInput(name='Time 2.2', label_team=self.team4))
+        self.names_popup = Popup(title=f'Nome das Duplas', content=names_grid, size_hint=[.6, 1], pos_hint={'center':[.5, .3]},
+                                 title_align='center', title_size=MDLabel(font_style="H4").font_size, on_dismiss=partial(self.set_players_name))
         self.build()
 
     def build(self):
@@ -318,14 +351,16 @@ class ContadorApp(MDApp):
         self.main_window = MainWindow(self)
         self.simple_game = SingleGame(self)
         self.double_game = DoubleGame(self)
-        self.sm = ScreenManager()
-        self.sm.add_widget(MyScreen(self.double_game, name='double'))
-        self.sm.add_widget(MyScreen(self.simple_game, name='single'))
+        self.sm = ScreenManager(on_enter=self.test)
         self.sm.add_widget(MyScreen(self.main_window, name='main'))
+        self.sm.add_widget(MyScreen(self.double_game, name='double', on_enter=self.double_game.names_popup.open))
+        self.sm.add_widget(MyScreen(self.simple_game, name='single', on_enter=self.simple_game.names_popup.open))
 
     def build(self):
         return self.sm
 
-
+    def test(self, *args):
+        print('ok')
+        print(args)
 # tests
 ContadorApp().run()
