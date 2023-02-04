@@ -91,6 +91,9 @@ class ScoreLabel(MDGridLayout):
     def get_pos_hint(self):
         return self.pos
 
+    def change_color(self, color):
+        self.score_lbl.text_color = color
+
 # Single Window
 class NameInput(MDTextField):
     def __init__(self, name, label_team, *args, **kwargs):
@@ -190,7 +193,7 @@ class SingleGame(MDRelativeLayout):
 
     def set_points(self, team=None, *args):
         # add the point
-        if team is not None and max(self.score)<self.max_points:
+        if not self.check_win() and team:
             self.all_points.append(team)
 
         # count
@@ -202,15 +205,53 @@ class SingleGame(MDRelativeLayout):
         # change text
         self.change_text_score()
 
+        # change color if match point
+        self.change_text_score_color()
+
         # change_shuttlecock
         self.change_shuttlecock()
 
     def end_set(self, *args):
+        t1, t2 = self.score
         self.reset_things()
         lbl1 = self.team1.get_name()
         lbl2 = self.team2.get_name()
         self.team1.change_label(lbl2)
         self.team2.change_label(lbl1)
+
+        if t1 >= t2:
+            self.set_points(2)
+        else:
+            self.set_points(1)
+
+
+    def check_win(self):
+        """Returns True if any team won"""
+        max_pts = max(self.score)
+        min_pts = min(self.score)
+        won = (max_pts >= self.max_points) and (abs(max_pts-min_pts) >= 2)
+        if max_pts >= 30:
+            won = True
+        return won
+
+    def change_text_score_color(self):
+        t1, t2 = self.score
+        color = 'red'
+        default_color = 'white'
+        if self.check_win():
+            color = 'gold'
+        if t1 > t2 and t1 >= self.max_points-1:
+            self.change_color(self.score_t1, color)
+            self.change_color(self.score_t2, default_color)
+        elif t2 > t1 and t2 >= self.max_points-1:
+            self.change_color(self.score_t2, color)
+            self.change_color(self.score_t1, default_color)
+        else:
+            self.change_color(self.score_t1, default_color)
+            self.change_color(self.score_t2, default_color)
+
+    def change_color(self, lbl, color, *args):
+        lbl.change_color(color)
 
     def change_shuttlecock(self):
         if len(self.all_points) == 0:
@@ -337,15 +378,21 @@ class DoubleGame(SingleGame):
         self.team4.change_pos(p2)
 
     def end_set(self, *args):
+        t1, t2 = self.score
         self.reset_things()
         lbl1 = self.team1.get_name()
         lbl3 = self.team3.get_name()
         lbl2 = self.team2.get_name()
         lbl4 = self.team4.get_name()
-        self.team1.change_label(lbl4)
-        self.team3.change_label(lbl2)
-        self.team2.change_label(lbl3)
-        self.team4.change_label(lbl1)
+        self.team1.change_label(lbl2)
+        self.team3.change_label(lbl4)
+        self.team2.change_label(lbl1)
+        self.team4.change_label(lbl3)
+
+        if t1 >= t2:
+            self.set_points(2)
+        else:
+            self.set_points(1)
 
 # Main App
 class ContadorApp(MDApp):
@@ -363,7 +410,7 @@ class ContadorApp(MDApp):
         return self.sm
 
     def test(self, *args):
-        print('ok')
+        print('Função de teste')
         print(args)
 # tests
 ContadorApp().run()
