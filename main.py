@@ -97,6 +97,11 @@ class ScoreLabel(MDGridLayout):
     def change_color(self, color):
         self.score_lbl.text_color = color
 
+class GameOver(MDRelativeLayout):
+    def __init__(self, *args, **kwargs):
+        super().__init__(size_hint=[1,1], pos_hint = {'center': [.5,.5]}, *args, **kwargs)
+        self.add_widget(MDLabel(text='Eba!!! Ganhou!!!', font_style='H1', valign='center', halign='center'))
+
 
 # Single Window
 class NameInput(MDTextField):
@@ -249,6 +254,11 @@ class SingleGame(MDRelativeLayout):
 
     def end_set(self, *args):
         t1, t2 = self.score
+        t2_sets, t1_sets = self.team2_sets.text, self.team1_sets.text
+
+        if len(t2_sets) + len(t1_sets) >= 3 or abs(len(t2_sets) - len(t1_sets)) >= 2:
+            self.add_widget(GameOver(), 0)
+            return
 
         self.reset_things()
 
@@ -262,7 +272,7 @@ class SingleGame(MDRelativeLayout):
         self.team1.change_label(lbl2)
         self.team2.change_label(lbl1)
 
-        self.team1_sets.text, self.team2_sets.text = self.team2_sets.text, self.team1_sets.text
+        self.team1_sets.text, self.team2_sets.text = t2_sets, t1_sets
 
     def half_set(self, *args):
         lbl1 = self.team1.get_name()
@@ -443,6 +453,10 @@ class DoubleGame(SingleGame):
     def end_set(self, *args):
         t1, t2 = self.score
         t2_sets, t1_sets = self.team2_sets.text, self.team1_sets.text
+
+        if len(t2_sets)+len(t1_sets) >= 3 or abs(len(t2_sets)-len(t1_sets))>=2:
+            self.add_widget(GameOver(),0)
+            return
         self.reset_things()
 
         lbl1 = self.team1.get_name()
@@ -466,8 +480,8 @@ class DoubleGame(SingleGame):
         lbl3 = self.team3.get_name()
         lbl2 = self.team2.get_name()
         lbl4 = self.team4.get_name()
-        self.team1.change_label(lbl2)
-        self.team3.change_label(lbl4)
+        self.team1.change_label(lbl4)
+        self.team3.change_label(lbl2)
         self.team2.change_label(lbl3)
         self.team4.change_label(lbl1)
 
@@ -478,6 +492,8 @@ class DoubleGame(SingleGame):
         self.all_points = all_pts
 
         self.score = self.score[::-1]
+
+        # self.set_points()
 
 # Main App
 class ContadorApp(MDApp):
