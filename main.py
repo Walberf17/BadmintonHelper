@@ -1,7 +1,7 @@
 """
 This is a badminton points counter
 """
-__version__ = "3.4.4"
+__version__ = "3.5.1"
 
 import os
 from functools import partial
@@ -146,7 +146,7 @@ class TeamLabel(MDGridLayout):
 
 class ScoreLabel(MDGridLayout):
     def __init__(self, score, pos_hint, **kwargs):
-        super().__init__(cols=1, size_hint=[.3, .2], md_bg_color=[0, 0, 0, 1], pos_hint=pos_hint, **kwargs)
+        super().__init__(cols=1, size_hint=[.4, .2], md_bg_color=[0, 0, 0, 1], adaptive_width=True, pos_hint=pos_hint, **kwargs)
         self.score_lbl = MDLabel(text=score, halign='center', font_style='H2', max_lines=1, theme_text_color='Custom',
                                  text_color='white')
         self.add_widget(self.score_lbl)
@@ -181,16 +181,27 @@ class GameOver(MDRelativeLayout):
         anim.start(self)
 
 
-class NameInput(MDTextField):
-    def __init__(self, name, label_team, *args, **kwargs):
-        super().__init__(text_color_normal=[0, 0, 0, 1], text=name, mode='round', fill_color_normal=[1, 1, 1, 1], *args,
-                         **kwargs)
-        self.label_team = label_team
+class NameInputs(MDGridLayout):
+    def __init__(self, x2=False, *args, **kwargs):
+        super().__init__(cols=1, spacing=20, *args, **kwargs)
+        self.x2 = x2
+        default_args = dict(size_hint=[1,1],mode= "fill", radius=[0,10,0,10], fill_color_focus='white',
+                            text_color_focus='black', helper_text_color_focus='white', helper_text_mode='on_error',
+                            text_color_normal='black'
+                            )
+        self.name1 = MDTextField(text='Jogador 1', **default_args)
+        self.add_widget(self.name1)
+        if self.x2:
+            self.name2 = MDTextField(text='Jogador 2', **default_args)
+            self.add_widget(self.name2)
 
-    def change_label(self):
-        if self.text:
-            return
-            self.label_team.change_label(self.text)
+    def get_names(self):
+        names = list()
+        names.append(self.name1.text)
+        if self.x2:
+            names.append(self.name2.text)
+        return names
+
 
 
 class Team(MDRelativeLayout):
@@ -246,7 +257,7 @@ class Team(MDRelativeLayout):
     def player_position_1x1(self, all_points, past_half):
         even_sets = len(all_points) % 2 == 0
 
-        y_dif = .23
+        y_dif = .26
 
         if len(all_points)==0 or len(all_points[-1]) < 1:
             y_dif = 0
@@ -282,7 +293,7 @@ class Team(MDRelativeLayout):
             self.team1.change_pos([.5, .5 - .26])
             self.team2.change_pos([.5, .5 + .26])
 
-    def change_names(self, name1=None, name2=None):
+    def change_names(self, name1=None , name2=None):
         if name1:
             self.team1.change_label(name1)
         if name2:
@@ -365,14 +376,16 @@ class SingleGame(MDRelativeLayout):
                                              pos_hint={'center': [.15, .93]}, font_style='H5',
                                              on_release=partial(self.popup.open), text_color=[0, 0, 0, 1])
 
-        # names popup
-        names_grid = MDGridLayout(cols=2, adaptive_size=True, size_hint=[1, 1], spacing=10, padding=[10] * 4)
-        names_grid.add_widget(NameInput(name='Player1', label_team=self.team1))
-        names_grid.add_widget(NameInput(name='Player2', label_team=self.team2))
+        if not hasattr(self, 'names_popup'):
+            team1 = NameInputs()
+            team2 = NameInputs()
+            grid = MDGridLayout(rows=1, spacing=20)
+            grid.add_widget(team1)
+            grid.add_widget(team2)
+            self.names_popup = Popup(title=f'Nomes', content=grid, size_hint=[.5, .8], title_align='center',
+                           title_size=MDLabel(font_style="H4").font_size, on_dismiss=partial(self.change_names, team1, team2))
+        # self.names_popup.open()
 
-        self.names_popup = Popup(pos_hint={'center': [.5, .3]}, on_dismiss=self.set_players_name,
-                                 title=f'Nome dos Competidores', content=names_grid, size_hint=[.6, 1],
-                                 title_align='center', title_size=MDLabel(font_style="H4").font_size)
 
         self.build()
 
@@ -402,6 +415,9 @@ class SingleGame(MDRelativeLayout):
         self.add_widget(self.game_over)
         self.set_points()
 
+    def change_names(self, team1, team2, *args):
+        self.team1.change_names(*team1.get_names()[::-1])
+        self.team2.change_names(*team2.get_names())
 
     def set_points(self, team=None, *args):
 
@@ -453,9 +469,9 @@ class SingleGame(MDRelativeLayout):
         self.build()
         self.game_over.move_down()
         self.set_points()
+        self.names_popup.open()
 
     def change_window(self, new_window, *args):
-        self.reset_things()
         self.app.sm.current = new_window
 
     def check_game_win_counter(self):
@@ -595,6 +611,14 @@ class DoubleGame(SingleGame):
                           pos_hint={'center': [.35, .6]})
         self.team2 = Team(right_side=True, x2=True, team_number=2, size_hint=[.4, .7], board=self,
                           pos_hint={'center': [.65, .6]})
+        team1 = NameInputs(True)
+        team2 = NameInputs(True)
+        grid = MDGridLayout(rows=1, spacing=20)
+        grid.add_widget(team1)
+        grid.add_widget(team2)
+        self.names_popup = Popup(title=f'Nomes', content=grid, size_hint=[.5, .8], title_align='center',
+                                 title_size=MDLabel(font_style="H4").font_size,
+                                 on_dismiss=partial(self.change_names, team1, team2))
         super().__init__(*args, **kwargs)
 
 
@@ -608,8 +632,8 @@ class ContadorApp(MDApp):
         self.double_game = DoubleGame(self)
         self.sm = ScreenManager()
         self.sm.add_widget(MyScreen(self.main_window, name='main'))
-        self.sm.add_widget(MyScreen(self.simple_game, name='single', on_enter=self.simple_game.names_popup.open))
-        self.sm.add_widget(MyScreen(self.double_game, name='double', on_enter=self.double_game.names_popup.open))
+        self.sm.add_widget(MyScreen(self.simple_game, name='single', on_enter=self.simple_game.reset_things))
+        self.sm.add_widget(MyScreen(self.double_game, name='double', on_enter=self.double_game.reset_things))
 
     def build(self):
         return self.sm
