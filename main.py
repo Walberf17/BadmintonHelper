@@ -1,7 +1,7 @@
 """
 This is a badminton points counter
 """
-__version__ = "3.4.0"
+__version__ = "3.4.4"
 
 import os
 from functools import partial
@@ -82,7 +82,6 @@ class MainWindow(MDRelativeLayout):
         self.app.sm.current = new_window
 
 
-#
 class TeamLabel(MDGridLayout):
     def __init__(self, team_name, initial_right=True, initial_top=True, **kwargs):
         self.initial_right = initial_right
@@ -147,7 +146,7 @@ class TeamLabel(MDGridLayout):
 
 class ScoreLabel(MDGridLayout):
     def __init__(self, score, pos_hint, **kwargs):
-        super().__init__(cols=1, size_hint=[.2, .2], md_bg_color=[0, 0, 0, 1], adaptive_width=True, pos_hint=pos_hint, **kwargs)
+        super().__init__(cols=1, size_hint=[.3, .2], md_bg_color=[0, 0, 0, 1], pos_hint=pos_hint, **kwargs)
         self.score_lbl = MDLabel(text=score, halign='center', font_style='H2', max_lines=1, theme_text_color='Custom',
                                  text_color='white')
         self.add_widget(self.score_lbl)
@@ -204,12 +203,12 @@ class Team(MDRelativeLayout):
         self.x2 = x2
         self.winnings = MDGridLayout(rows=1, size_hint=[.9,.1], pos_hint={'center':[.5,.95]})
         self.add_widget(self.winnings)
-        self.team1 = TeamLabel('time 1', initial_right=self.right_side, initial_top=not self.right_side)
-        self.add_widget(self.team1)
+        self.team1 = TeamLabel(f'time {self.team_number}', initial_right=self.right_side, initial_top=not self.right_side)
+
         if self.x2:
-            self.team2 = TeamLabel('time 1.2', initial_right=self.right_side, initial_top=self.right_side,
-                                   adaptive_size=True)
+            self.team2 = TeamLabel(f'time {self.team_number}.2', initial_right=self.right_side, initial_top=not self.right_side)
             self.add_widget(self.team2)
+        self.add_widget(self.team1)
         self.team_sets = TeamSets(team_to_follow=self.team1, team_number=1)
 
         self.score_dif = .05
@@ -224,8 +223,13 @@ class Team(MDRelativeLayout):
         self.add_widget(MDRectangleFlatButton(size_hint=[1,1], on_release=partial(board.set_points, self.team_number)))
 
     def player_position(self, all_points, past_half):
+        sets = len(all_points)
+        even_sets = sets % 2 == 0
+
+        self.change_position(even_sets, past_half)
+
         if self.x2:
-            self.player_position_2x2()
+            self.player_position_2x2(all_points, past_half)
         else:
             self.player_position_1x1(all_points, past_half)
         self.change_wins(all_points)
@@ -240,12 +244,9 @@ class Team(MDRelativeLayout):
                     self.winnings.add_widget(image)
 
     def player_position_1x1(self, all_points, past_half):
-        sets = len(all_points)
-        even_sets = sets % 2 == 0
+        even_sets = len(all_points) % 2 == 0
 
-        self.change_position(even_sets, past_half)
-
-        y_dif = .26
+        y_dif = .23
 
         if len(all_points)==0 or len(all_points[-1]) < 1:
             y_dif = 0
@@ -260,11 +261,38 @@ class Team(MDRelativeLayout):
                 y_dif *= -1
         self.team1.change_pos([.5, .5 + y_dif])
 
-    def player_position_2x2(self):
-        pass
+    def player_position_2x2(self, all_points, past_half):
+        even = False
+
+        if self.right_side:
+            even = True
+
+        for idx, pt in enumerate(all_points[-1][0:-1]):
+            if pt == self.team_number and pt == all_points[-1][idx+1]:
+                even = not even
+
+        if past_half:
+            even = not even
+
+
+        if even:
+            self.team1.change_pos([.5, .5 + .26])
+            self.team2.change_pos([.5, .5 - .26])
+        else:
+            self.team1.change_pos([.5, .5 - .26])
+            self.team2.change_pos([.5, .5 + .26])
+
+    def change_names(self, name1=None, name2=None):
+        if name1:
+            self.team1.change_label(name1)
+        if name2:
+            self.team2.change_label(name2)
 
     def change_score(self, new_score):
         self.score_lbl.change_label(str(new_score))
+
+    def change_color(self, color):
+        self.score_lbl.change_color(color)
 
     def change_position(self, even_sets, past_half):
         x_dif = .2
@@ -293,6 +321,7 @@ class Team(MDRelativeLayout):
     def get_wins(self):
         return len(self.winnings.children)
 
+
 class SingleGame(MDRelativeLayout):
     def __init__(self, app, **kwargs):
         super().__init__(**kwargs)
@@ -316,8 +345,9 @@ class SingleGame(MDRelativeLayout):
         self.shuttlecock = Image(source=os.path.join('.', 'images', 'volante.png'), size_hint=[.1, .1],
                                  pos_hint={'center': [.5, .5]})
 
-        self.tittle = MDLabel(text='Simples', font_style='H3', pos_hint={'center': [.5, .93]}, max_lines=1,
-                              halign='center', valign='center')
+        if not hasattr(self, 'tittle'):
+            self.tittle = MDLabel(text='Simples', font_style='H3', pos_hint={'center': [.5, .93]}, max_lines=1,
+                                  halign='center', valign='center')
 
         # buttons
 
@@ -459,28 +489,27 @@ class SingleGame(MDRelativeLayout):
         return won
 
     def change_text_score_color(self):
-        return
-        t1, t2 = int(self.score_t1.get_name()), int(self.score_t2.get_name())
+        t1, t2 = self.score
         color = 'red'
         default_color = 'white'
         max_default_pts = 29
         if self.check_win():
             color = 'gold'
         if (t1 > t2 and t1 >= self.max_points - 1):  # game point for team 1
-            self.change_color(self.score_t1, color)
-            self.change_color(self.score_t2, default_color)
+            self.change_color(self.team1, color)
+            self.change_color(self.team2, default_color)
         elif (t2 > t1 and t2 >= self.max_points - 1):  # game point for team 2
-            self.change_color(self.score_t2, color)
-            self.change_color(self.score_t1, default_color)
+            self.change_color(self.team2, color)
+            self.change_color(self.team1, default_color)
         else:
-            self.change_color(self.score_t1, default_color)
-            self.change_color(self.score_t2, default_color)
+            self.change_color(self.team1, default_color)
+            self.change_color(self.team2, default_color)
 
         if t1 == max_default_pts and t2 <= max_default_pts:
-            self.change_color(self.score_t1, color)
+            self.change_color(self.team1, color)
 
         if t2 == max_default_pts and t1 <= max_default_pts:
-            self.change_color(self.score_t2, color)
+            self.change_color(self.team2, color)
 
     def change_color(self, lbl, color, *args):
         lbl.change_color(color)
@@ -560,47 +589,14 @@ class SingleGame(MDRelativeLayout):
 
 class DoubleGame(SingleGame):
     def __init__(self, *args, **kwargs):
-
+        self.tittle = MDLabel(text='Duplas', font_style='H3', pos_hint={'center': [.5, .93]}, max_lines=1,
+                              halign='center', valign='center')
+        self.team1 = Team(right_side=False, x2=True, team_number=1, size_hint=[.4, .7], board=self,
+                          pos_hint={'center': [.35, .6]})
+        self.team2 = Team(right_side=True, x2=True, team_number=2, size_hint=[.4, .7], board=self,
+                          pos_hint={'center': [.65, .6]})
         super().__init__(*args, **kwargs)
-        self.tittle.text = 'Duplas'
 
-        names_grid = MDGridLayout(cols=2, adaptive_size=True, size_hint=[1, 1], spacing=80, padding=[10] * 4,
-                                  id='names_grid')
-        names_grid.add_widget(NameInput(name='Time 1.1', label_team=self.team1))
-        names_grid.add_widget(NameInput(name='Time 2.1', label_team=self.team2))
-        self.names_popup = Popup(title=f'Nome das Duplas', content=names_grid, size_hint=[.6, 1],
-                                 pos_hint={'center': [.5, .3]},
-                                 title_align='center', title_size=MDLabel(font_style="H4").font_size,
-                                 on_dismiss=partial(self.set_players_name))
-        self.build()
-
-    def build(self):
-        super().build()
-        return
-
-    def change_service(self):
-        past_half = len(self.all_points) >= 3 and max(self.score) >= ((self.max_points // 2) + 1)
-
-        self.team1.change_position(sets=len(self.all_points), even=t1, past_half=past_half, single=False)
-        self.team2.change_position(sets=len(self.all_points), even=t2, past_half=past_half, single=False)
-        self.team3.change_position(sets=len(self.all_points), even=t1, past_half=past_half, single=False)
-        self.team4.change_position(sets=len(self.all_points), even=t2, past_half=past_half, single=False)
-
-    def set_t1_pos(self, even):
-        p1 = [.25, .62]
-        p2 = [.25, .38]
-        if not even:
-            p1, p2 = p2, p1
-        self.team1.change_pos(p1)
-        self.team3.change_pos(p2)
-
-    def set_t2_pos(self, even):
-        p1 = [.75, .62]
-        p2 = [.75, .38]
-        if not even:
-            p1, p2 = p2, p1
-        self.team2.change_pos(p1)
-        self.team4.change_pos(p2)
 
 
 # Tests
@@ -609,11 +605,11 @@ class ContadorApp(MDApp):
         super().__init__(**kwargs)
         self.main_window = MainWindow(self)
         self.simple_game = SingleGame(self)
-        # self.double_game = DoubleGame(self)
+        self.double_game = DoubleGame(self)
         self.sm = ScreenManager()
         self.sm.add_widget(MyScreen(self.main_window, name='main'))
         self.sm.add_widget(MyScreen(self.simple_game, name='single', on_enter=self.simple_game.names_popup.open))
-        # self.sm.add_widget(MyScreen(self.double_game, name='double', on_enter=self.double_game.names_popup.open))
+        self.sm.add_widget(MyScreen(self.double_game, name='double', on_enter=self.double_game.names_popup.open))
 
     def build(self):
         return self.sm
