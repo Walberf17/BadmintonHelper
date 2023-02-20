@@ -1,7 +1,7 @@
 """
 This is a badminton points counter
 """
-__version__ = "3.5.1"
+__version__ = "3.5.12"
 
 import os
 from functools import partial
@@ -19,17 +19,17 @@ from kivy.uix.image import Image
 from kivy.uix.popup import Popup
 from kivymd.uix.textfield import MDTextField
 from kivy.animation import Animation
-from kivy.uix.label import Label
-from kivy.uix.button import Button
 
 
 # import other things
+import datetime
+
+PRAZO_MAXIMO = datetime.date(2023,3,4)
+
+# Variables
+popups_defaults_dict = dict()
 
 
-# variables
-
-
-# Screens
 class MyScreen(Screen):
     def __init__(self, widget, **kwargs):
         super().__init__(**kwargs)
@@ -145,14 +145,28 @@ class TeamLabel(MDGridLayout):
 
 
 class ScoreLabel(MDGridLayout):
-    def __init__(self, score, pos_hint, **kwargs):
-        super().__init__(cols=1, size_hint=[.4, .2], md_bg_color=[0, 0, 0, 1], adaptive_width=True, pos_hint=pos_hint, **kwargs)
-        self.score_lbl = MDLabel(text=score, halign='center', font_style='H2', max_lines=1, theme_text_color='Custom',
+    def __init__(self, right_side, **kwargs):
+        self.size_hint_w = .2
+
+        if right_side:
+            pos_hint_x = 1-self.size_hint_w/2
+        else:
+            pos_hint_x = self.size_hint_w/2
+
+        super().__init__(cols=1, size_hint=[.4, .2], md_bg_color=[0, 0, 0, 1], pos_hint={'center': [pos_hint_x, .5]}, **kwargs)
+        self.score_lbl = MDLabel(text='0', halign='center', font_style='H2', max_lines=1, theme_text_color='Custom',
                                  text_color='white')
         self.add_widget(self.score_lbl)
 
-    def change_pos(self, new_pos):
-        self.pos_hint = {'center': new_pos}
+    def change_position(self, right_side):
+        if right_side:
+            pos_hint_x = self.size_hint_w / 2
+        else:
+            pos_hint_x = 1 - self.size_hint_w/ 2
+        pos_hint = {'center': [pos_hint_x, .5]}
+
+        anim_lbl = Animation(pos_hint=pos_hint, duration=.1)
+        anim_lbl.start(self)
 
     def change_label(self, new_name):
         self.score_lbl.text = str(new_name)
@@ -185,7 +199,7 @@ class NameInputs(MDGridLayout):
     def __init__(self, x2=False, *args, **kwargs):
         super().__init__(cols=1, spacing=20, *args, **kwargs)
         self.x2 = x2
-        default_args = dict(size_hint=[1,1],mode= "fill", radius=[0,10,0,10], fill_color_focus='white',
+        default_args = dict(size_hint=[1,1],mode= "fill", radius=[0,40,0,40], fill_color_focus='white',
                             text_color_focus='black', helper_text_color_focus='white', helper_text_mode='on_error',
                             text_color_normal='black'
                             )
@@ -201,7 +215,6 @@ class NameInputs(MDGridLayout):
         if self.x2:
             names.append(self.name2.text)
         return names
-
 
 
 class Team(MDRelativeLayout):
@@ -222,12 +235,7 @@ class Team(MDRelativeLayout):
         self.add_widget(self.team1)
         self.team_sets = TeamSets(team_to_follow=self.team1, team_number=1)
 
-        self.score_dif = .05
-        center = {'center': [0 + self.score_dif, .5]}
-
-        if self.right_side:
-            center = {'center': [1 - self.score_dif, .5]}
-        self.score_lbl = ScoreLabel(str(0), center)
+        self.score_lbl = ScoreLabel(self.right_side)
         self.add_widget(self.score_lbl)
 
         self.all_points = list()
@@ -318,13 +326,8 @@ class Team(MDRelativeLayout):
             lbl_right = not lbl_right
         center = {'center': [.5+x_dif, y]}
 
-        if lbl_right:
-            pos_hint = {'center': [.05, .5]}
-        else:
-            pos_hint = {'center': [.95, .5]}
 
-        anim_lbl = Animation(pos_hint=pos_hint, duration=.1)
-        anim_lbl.start(self.score_lbl)
+        self.score_lbl.change_position(lbl_right)
 
         anim = Animation(pos_hint=center, duration=.1)
         anim.start(self)
@@ -344,47 +347,53 @@ class SingleGame(MDRelativeLayout):
         self.game_over = GameOver()
         self.second_half = False
 
+        # Title
+        if not hasattr(self, 'tittle'):
+            self.tittle = MDLabel(text='Simples', font_style='H3', pos_hint={'center': [.5, .93]}, max_lines=1,
+                                  halign='center', valign='center')
+
+
+        # Teams
         if not hasattr(self, 'team1'):
             self.team1 = Team(right_side=False, x2=False, team_number=1, size_hint=[.4, .7], board=self,
                               pos_hint={'center': [.35, .6]})
             self.team2 = Team(right_side=True, x2=False, team_number=2, size_hint=[.4, .7], board=self,
                               pos_hint={'center': [.65, .6]})
 
+
+        # images
         self.image = Image(source=os.path.join('.', 'images', 'court.jpg'), size_hint=[.9, .7],
                            pos_hint={'center': [.5, .5]}, keep_ratio=False)
 
         self.shuttlecock = Image(source=os.path.join('.', 'images', 'volante.png'), size_hint=[.1, .1],
                                  pos_hint={'center': [.5, .5]})
 
-        if not hasattr(self, 'tittle'):
-            self.tittle = MDLabel(text='Simples', font_style='H3', pos_hint={'center': [.5, .93]}, max_lines=1,
-                                  halign='center', valign='center')
 
-        # buttons
+        ############ Popups
 
-        # popup
-        grid = MDGridLayout(cols=1, adaptive_size=True, size_hint=[1, 1], spacing=10, padding=[10] * 4)
+        # Pontuation
+        grid_pts = MDGridLayout(cols=1, adaptive_size=True, size_hint=[1, 1], spacing=10, padding=[10] * 4)
 
         for val in [7, 11, 15, 21, 'inf']:
-            grid.add_widget(
+            grid_pts.add_widget(
                 MDRoundFlatButton(text=str(val), on_release=partial(self.change_max_points, val), halign='center',
-                                  font_style='H5', size_hint=[1, 1]))
-        self.popup = Popup(title=f'Pontuação', content=grid, size_hint=[.5, .8], title_align='center',
+                                  font_style='H6', size_hint=[1, 1]))
+        self.popup = Popup(title=f'Pontuação', content=grid_pts, size_hint=[.5, .8], title_align='center',
                            title_size=MDLabel(font_style="H4").font_size)
         self.pts_btn = MDRectangleFlatButton(line_color=[0, 0, 0, 0], md_bg_color=[.7, 0.7, 0.7, 1],
                                              text=f'Pontuação: 21', size_hint=[.2, .1],
                                              pos_hint={'center': [.15, .93]}, font_style='H5',
                                              on_release=partial(self.popup.open), text_color=[0, 0, 0, 1])
 
+        # Names Popup
         if not hasattr(self, 'names_popup'):
             team1 = NameInputs()
             team2 = NameInputs()
-            grid = MDGridLayout(rows=1, spacing=20)
-            grid.add_widget(team1)
-            grid.add_widget(team2)
-            self.names_popup = Popup(title=f'Nomes', content=grid, size_hint=[.5, .8], title_align='center',
-                           title_size=MDLabel(font_style="H4").font_size, on_dismiss=partial(self.change_names, team1, team2))
-        # self.names_popup.open()
+            names_grid = MDGridLayout(rows=1, spacing=20)
+            names_grid.add_widget(team1)
+            names_grid.add_widget(team2)
+            self.names_popup = Popup(title=f'Times', content=names_grid, size_hint=[.5, 1], title_align='center',
+                           title_size=MDLabel(font_style="H6").font_size, on_dismiss=partial(self.change_names, team1, team2))
 
 
         self.build()
@@ -616,14 +625,12 @@ class DoubleGame(SingleGame):
         grid = MDGridLayout(rows=1, spacing=20)
         grid.add_widget(team1)
         grid.add_widget(team2)
-        self.names_popup = Popup(title=f'Nomes', content=grid, size_hint=[.5, .8], title_align='center',
-                                 title_size=MDLabel(font_style="H4").font_size,
+        self.names_popup = Popup(title=f'Times', content=grid, size_hint=[.5, 1], title_align='center',
+                                 title_size=MDLabel(font_style="H6").font_size,
                                  on_dismiss=partial(self.change_names, team1, team2))
         super().__init__(*args, **kwargs)
 
 
-
-# Tests
 class ContadorApp(MDApp):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -636,7 +643,18 @@ class ContadorApp(MDApp):
         self.sm.add_widget(MyScreen(self.double_game, name='double', on_enter=self.double_game.reset_things))
 
     def build(self):
+        self.icon = os.path.join('.', 'images', 'icon.png')
         return self.sm
 
 
-ContadorApp().run()
+class EntreEmContato(MDApp):
+    def build(self):
+        txt = f'Esse aplicativo foi desativado  por estar desatualizado. Entre em contato com Walber Franklin pelo email: mutante.apps@gmail.com'
+        lbl = MDLabel(text=txt, font_style='H4', halign='center')
+        return lbl
+
+
+if datetime.date.today() > PRAZO_MAXIMO:
+    EntreEmContato().run()
+else:
+    ContadorApp().run()
