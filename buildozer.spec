@@ -37,7 +37,7 @@ version.filename = %(source.dir)s/main.py
 
 # (list) Application requirements
 # comma separated e.g. requirements = sqlite3,kivy
-requirements = python3,kivy==master, kivymd
+requirements = python3,kivy==master, kivymd, sdl2_ttf==2.0.15
 
 # (str) Custom source folders for requirements
 # Sets custom source for any requirements with recipes
@@ -89,8 +89,8 @@ fullscreen = 0
 #android.presplash_lottie = "path/to/lottie/file.json"
 
 # (str) Adaptive icon of the application (used if Android API level is 26+ at runtime)
-icon.adaptive_foreground.filename = %(source.dir)s/images/icon.png
-icon.adaptive_background.filename = %(source.dir)s/images/icon.png
+# icon.adaptive_foreground.filename = %(source.dir)s/images/icon.png
+# icon.adaptive_background.filename = %(source.dir)s/images/icon.png
 
 # (list) Permissions
 #android.permissions = INTERNET
