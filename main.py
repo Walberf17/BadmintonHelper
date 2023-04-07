@@ -1,7 +1,7 @@
 """
 This is a badminton points counter
 """
-__version__ = "4.0.3"
+__version__ = "4.0.4"
 
 import os
 import random
@@ -21,12 +21,14 @@ from kivy.uix.popup import Popup
 from kivymd.uix.textfield import MDTextField
 from kivy.animation import Animation
 from kivy.uix.stacklayout import StackLayout
+from kivymd.uix.scrollview import MDScrollView
+from kivymd.uix.datatables import MDDataTable
 
 
 # import other things
 import datetime
 
-PRAZO_MAXIMO = datetime.date(2023,3,4)
+PRAZO_MAXIMO = datetime.date(2023,3,18)
 
 # Variables
 TEAM_SIZE_HINT = [.5, .7]
@@ -182,7 +184,19 @@ class ScoreLabel(MDGridLayout):
 class GameOver(MDRelativeLayout):
     def __init__(self, *args, **kwargs):
         super().__init__(md_bg_color= [0,0,0,1],size_hint=[1, 1], pos_hint={'center': [.5, -.5]},adaptive_height=True, *args, **kwargs)
+        self.lbl = MDLabel(theme_text_color='Custom', text_color=[1,1,1,1], font_style='H1', valign='center', halign='center', italic=True)
+        self.random_text()
+        self.add_widget(self.lbl)
 
+    def move_up(self):
+        anim = Animation(pos_hint={'center': [.5, .5]}, duration=.2)
+        anim.start(self)
+
+    def move_down(self):
+        anim = Animation(pos_hint={'center': [.5, -.5]}, duration=.2)
+        anim.start(self)
+
+    def random_text(self):
         texts = [
             'Vitória!',
             'Terminou!',
@@ -197,15 +211,7 @@ class GameOver(MDRelativeLayout):
             'Cumprimentos'
         ]
         text = random.choice(texts)
-        self.add_widget(MDLabel(text=text, theme_text_color='Custom', text_color=[1,1,1,1], font_style='H1', valign='center', halign='center', italic=True))
-
-    def move_up(self):
-        anim = Animation(pos_hint={'center': [.5, .5]}, duration=.2)
-        anim.start(self)
-
-    def move_down(self):
-        anim = Animation(pos_hint={'center': [.5, -.5]}, duration=.2)
-        anim.start(self)
+        self.lbl.text = text
 
 
 class NameInputs(MDGridLayout):
@@ -253,7 +259,7 @@ class Team(MDRelativeLayout):
         self.add_widget(self.score_lbl)
 
         self.all_points = list()
-        self.add_widget(MDRectangleFlatButton(size_hint=[1,1], on_release=partial(board.set_points, self.team_number)))
+        self.add_widget(MDRectangleFlatButton(size_hint=[1,1], on_release=partial(board.set_points, self.team_number), line_color=[0,0,0,0]))
 
     def player_position(self, all_points, past_half):
         sets = len(all_points)
@@ -362,6 +368,47 @@ class Team(MDRelativeLayout):
         return len(self.winnings.children)
 
 
+class HistoryChart(Popup):
+    def __init__(self, t1_name='team1', t2_name='team2', *args, **kwargs):
+        super().__init__(title='Histórico', *args, **kwargs)
+        self.score_history = MDGridLayout(cols=1)
+        self.t1_name = t1_name
+        self.t2_name = t2_name
+        scroll = MDScrollView()
+
+        # create the table
+        ## head
+        head = ['Times']
+        head += tuple(range(1,60))
+
+        # data
+        data = [(self.t1_name, *list(range(1,60))), (self.t2_name, *list(range(1,60)))]
+
+        scroll.add_widget(MDDataTable(column_data=head, row_data=data))
+
+        self.add_widget(scroll)
+
+
+
+    def update_score(self, score):
+        t1 = list()
+        t2 = list()
+        pt_mark = '.'
+        for pt in score[-1]:
+            if pt == 1:
+                t1.append(pt_mark)
+                t2.append(' ')
+            else:
+                t1.append(' ')
+                t2.append(pt_mark)
+        self.t1.clear_widgets()
+        self.t2.clear_widgets()
+        for mark in t1:
+            self.t1.add_widget(MDLabel(text=mark))
+        for mark in t2:
+            self.t2.add_widget(MDLabel(text=mark))
+
+
 class SingleGame(MDRelativeLayout):
     def __init__(self, app, **kwargs):
         super().__init__(**kwargs)
@@ -372,7 +419,7 @@ class SingleGame(MDRelativeLayout):
         self.score = [0, 0]
         self.game_over = GameOver()
         self.second_half = False
-
+        self.hist = HistoryChart(size_hint=[.8, .4], pos_hint={'center': [.5, .8]})
         self.timer = MDRelativeLayout(md_bg_color=[0,0,0,1], size_hint=[.01, 0], pos_hint={'center_y':.5, 'center_x':.5})
 
         # Title
@@ -438,6 +485,10 @@ class SingleGame(MDRelativeLayout):
         self.add_widget(self.team1)
         self.add_widget(self.team2)
 
+
+
+
+
         # Button for back point
         self.add_widget(
             MDRectangleFlatButton(line_color=[0, 0, 0, 0], md_bg_color=[.7, 0.7, 0.7, 1],
@@ -445,15 +496,26 @@ class SingleGame(MDRelativeLayout):
                                   pos_hint={'center': [.15, .08]}, font_style='H5',
                                   on_release=partial(self.back_point), text_color=[0, 0, 0, 1]))
 
+        # Button for the history
+        self.add_widget(
+            MDRectangleFlatButton(line_color=[0, 0, 0, 0], md_bg_color=[.7, 0.7, 0.7, 1],
+                                  text=f'Histórico', size_hint=[.2, .1],
+                                  pos_hint={'center': [.85, .08]}, font_style='H5',
+                                  on_release=partial(self.hist.open), text_color=[0, 0, 0, 1]))
+
+
         self.add_widget(self.shuttlecock)
         self.add_widget(
             MDRectangleFlatButton(line_color=[0, 0, 0, 0], md_bg_color=[.7, 0.7, 0.7, 1], text='^Acabar o set^',
                                   on_release=self.end_set, font_style='H3', text_color=[0, 0, 0, 1], size_hint=[.3,.1],
                                   pos_hint={'center': [.5, .08]}))
 
-        # self.add_widget(self.timer)
+
         self.add_widget(self.game_over)
+        self.game_over.random_text()
         self.set_points()
+
+
 
     def change_names(self, team1, team2, *args):
         self.team1.change_names(*team1.get_names()[::-1])
@@ -491,6 +553,7 @@ class SingleGame(MDRelativeLayout):
         # change_shuttlecock
         self.change_shuttlecock()
 
+        self.hist.update_score(self.all_points)
 
     @staticmethod
     def set_players_name(obj):
@@ -702,12 +765,15 @@ class ContadorApp(MDApp):
 
 class EntreEmContato(MDApp):
     def build(self):
-        txt = f'Esse aplicativo foi desativado  por estar desatualizado. Entre em contato com Walber Franklin pelo email: mutante.apps@gmail.com'
+        txt = f'''Esse aplicativo foi desativado  por estar desatualizado. Entre em contato com Mutante Apps pelo email:
+
+mutante.apps@gmail.com'''
         lbl = MDLabel(text=txt, font_style='H4', halign='center')
         return lbl
 
+ContadorApp().run()
 
-if datetime.date.today() > PRAZO_MAXIMO:
-    EntreEmContato().run()
-else:
-    ContadorApp().run()
+# if datetime.date.today() > PRAZO_MAXIMO:
+#     EntreEmContato().run()
+# else:
+#     ContadorApp().run()
