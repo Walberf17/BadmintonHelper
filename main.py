@@ -1,7 +1,7 @@
 """
 This is a badminton points counter
 """
-__version__ = "4.0.12"
+__version__ = "4.2.1"
 
 import os
 import random
@@ -29,17 +29,18 @@ from kivy.metrics import dp
 # import other things
 import datetime
 
-PRAZO_MAXIMO = datetime.date(2023, 6, 22)
+PRAZO_MAXIMO = datetime.date(2023, 9, 10)
 
 # Variables
 TEAM_SIZE_HINT = [.5, .7]
-TEXTS = Translations.en.copy()
+TEXTS = Translations.pt_br.copy()
 
 
 class MyScreen(Screen):
     def __init__(self, widget, **kwargs):
         super().__init__(**kwargs)
         self.add_widget(widget)
+
 
 class TeamSets(StackLayout):
     def __init__(self, team_to_follow, team_number=2, *args, **kwargs):
@@ -53,8 +54,8 @@ class TeamSets(StackLayout):
     def set_wins(self, all_pts):
         self.clear_widgets()
         if len(all_pts) > 1:
-            for set in all_pts[:-1]:
-                if set[-1] == (self.team_number + len(all_pts) % 2) % 2:
+            for game in all_pts[:-1]:
+                if game[-1] == (self.team_number + len(all_pts) % 2) % 2:
                     grid = MDGridLayout(cols=1, adaptive_size=True)
                     grid.add_widget(Image(source=self.image_file,
                                           pos_hint={'center': [.5, .5]}))
@@ -73,10 +74,12 @@ class MainWindow(MDRelativeLayout):
         super().__init__(size_hint=[1, 1], pos_hint={'center': [.5, .5]}, **kwargs)
         self.app = app
         grid = MDGridLayout(cols=2, size_hint=[.9, .8], pos_hint={'center': [.5, .5]}, spacing=50)
-        grid.add_widget(MDRectangleFlatButton(text=TEXTS.get(1), size_hint=[1, 1], on_release=partial(self.change_window,
-                                                                                                   'single')))
-        grid.add_widget(MDRectangleFlatButton(text=TEXTS.get(2), size_hint=[1, 1], on_release=partial(self.change_window,
-                                                                                                  'double')))
+        grid.add_widget(
+            MDRectangleFlatButton(text=TEXTS.get(1), size_hint=[1, 1], on_release=partial(self.change_window,
+                                                                                          'single')))
+        grid.add_widget(
+            MDRectangleFlatButton(text=TEXTS.get(2), size_hint=[1, 1], on_release=partial(self.change_window,
+                                                                                          'double')))
         self.add_widget(grid)
 
     def change_window(self, new_window, *args):
@@ -146,7 +149,7 @@ class TeamLabel(MDGridLayout):
 
 
 class ScoreLabel(MDGridLayout):
-    def __init__(self, right_side, **kwargs):
+    def __init__(self, right_side, board, team_number, **kwargs):
         self.size_hint_w = .2
 
         if right_side:
@@ -202,17 +205,9 @@ class GameOver(MDRelativeLayout):
 
     def random_text(self):
         texts = [
-            'Vitória!',
-            'Terminou!',
-            'This is Sparta!',
-            'GG!',
-            'Bom jogo!',
-            'Decimou!',
-            'Fim de Jogo!',
-            'Game!',
-            'K.O.!',
-            'Qua Qua!',
-            'Cumprimentos'
+            "Game!",
+            "Game",
+            "Fim de Jogo"
         ]
         text = random.choice(texts)
         self.lbl.text = text
@@ -248,25 +243,32 @@ class Team(MDRelativeLayout):
         self.team_number = team_number
         self.right_side = right_side
         self.x2 = x2
-        # self.winnings = StackLayout(size_hint=[.9,.1], pos_hint={'center':[.5,.95]},orientation='rl-tb')
         self.winnings = MDGridLayout(rows=1, size_hint=[.3, .1], pos_hint={'center': [.5, .95]})
         self.add_widget(self.winnings)
         self.team1 = TeamLabel(f'time {self.team_number}', initial_right=self.right_side,
                                initial_top=not self.right_side)
 
-        if self.x2:
-            self.team2 = TeamLabel(f'time {self.team_number}.2', initial_right=self.right_side,
-                                   initial_top=not self.right_side)
-            self.add_widget(self.team2)
         self.add_widget(self.team1)
         self.team_sets = TeamSets(team_to_follow=self.team1, team_number=1)
 
-        self.score_lbl = ScoreLabel(self.right_side)
+        self.score_lbl = ScoreLabel(self.right_side, board, -self.team_number)
+
         self.add_widget(self.score_lbl)
 
         self.all_points = list()
         self.add_widget(MDRectangleFlatButton(size_hint=[1, 1], on_release=partial(board.set_points, self.team_number),
                                               line_color=[0, 0, 0, 0]))
+        if self.x2:
+            self.team2 = TeamLabel(f'time {self.team_number}.2', initial_right=self.right_side,
+                                   initial_top=not self.right_side)
+            self.add_widget(self.team2)
+
+            self.add_widget(MDRectangleFlatButton(line_color=[0, 0, 0, 1], md_bg_color=[.7, 0.7, 0.7, 1], text=TEXTS.get(13),
+                                              font_style='H5', size_hint=[.1, .1], pos_hint={'center': [.5, .5]},
+                                              on_release=self.change_players, text_color=[0, 0, 0, 1]))
+
+    def change_players(self, *args):
+        self.change_names(self.team2.get_name(), self.team1.get_name())
 
     def player_position(self, all_points, past_half):
         sets = len(all_points)
@@ -319,7 +321,7 @@ class Team(MDRelativeLayout):
             even = True
 
         for idx, pt in enumerate(all_points[-1][0:-1]):
-            if pt == self.team_number and pt == all_points[-1][idx + 1]:
+            if (pt == self.team_number and pt == all_points[-1][idx + 1]) or (pt == -self.team_number):
                 even = not even
 
         if past_half:
@@ -373,48 +375,55 @@ class Team(MDRelativeLayout):
         return len(self.winnings.children)
 
 
-class HistoryChart(Popup):
-    def __init__(self, t1_name='team1', t2_name='team2', *args, **kwargs):
-        super().__init__(title='Histórico', **kwargs)
-        self.hist = list()
+class ScoreCounter(MDGridLayout):
+    def __init__(self, t1_name='team1', t2_name='team2', set_number=None, score_hist=None, *args, **kwargs):
+        super().__init__(cols=3, **kwargs)
+
+        full_grid = MDGridLayout(cols=1, md_bg_color='white')
         scroll = MDScrollView()
 
-        self.score_history = MDGridLayout(cols=1)
-        self.t1_name = MDLabel(text=t1_name, valign='center', halign='center', max_lines=2, adaptive_width=True, shorten=True, shorten_from='right')
-        self.t2_name = MDLabel(text=t2_name, valign='center', halign='center', max_lines=2, adaptive_width=True, shorten=True, shorten_from='right')
+        self.t1_name = MDLabel(text=t1_name, valign='center', halign='center', adaptive_width=True)
+        self.t2_name = MDLabel(text=t2_name, valign='center', halign='center', adaptive_width=True)
 
         main_grid = MDGridLayout(cols=2, md_bg_color='black')
 
-        # names column
+        # names
+        names_scroll = MDScrollView(size_hint_x=.3)
+
         names = MDGridLayout(rows=3, md_bg_color='white', adaptive_width=True)
-        names.add_widget(MDLabel(text='  ', valign='center', halign='center', max_lines=2, adaptive_width=True, shorten=True, shorten_from='right'))
+        names.add_widget(
+            MDLabel(text='Times', valign='center', halign='center', max_lines=2, adaptive_width=True, shorten=True,
+                    shorten_from='right'))
         names.add_widget(self.t1_name)
         names.add_widget(self.t2_name)
-        main_grid.add_widget(names)
+
+        names_scroll.add_widget(names)
+        main_grid.add_widget(names_scroll)
 
         # points
-        self.pts_grid = MDGridLayout(rows=3, adaptive_width=True, spacing=[2, 0], padding=[30, 0, 0, 0])
+        self.pts_grid = MDGridLayout(rows=3, adaptive_width=True, spacing=[2, 0], padding=[30, 0, 5, 0])
         scroll.add_widget(self.pts_grid)
 
         main_grid.add_widget(scroll)
-        self.add_widget(main_grid)
-        self.update_score([[]])
+
+        full_grid.add_widget(MDLabel(text=f'{set_number}º set', size_hint=[1, .2], halign='center'))
+
+        full_grid.add_widget(main_grid)
+
+        self.add_widget(full_grid)
+
+        self.update_score(score_hist)
 
     def update_score(self, score):
-        self.hist = score
-
-    def open(self, *args):
-        self.pts_grid.clear_widgets()
-        score = self.hist.copy()
         p1 = list()
         p2 = list()
         no_pt = '--'
-        for idx, pt in enumerate(score[-1]):
+        for idx, pt in enumerate(score):
             if pt == 1:
-                p1.append(str(score[-1][1:idx + 1].count(pt)))
+                p1.append(str(score[1:idx + 1].count(pt)))
                 p2.append(no_pt)
             else:
-                p2.append(str(score[-1][1:idx + 1].count(pt)))
+                p2.append(str(score[1:idx + 1].count(pt)))
                 p1.append(no_pt)
 
         # pts_line
@@ -434,11 +443,39 @@ class HistoryChart(Popup):
             bg = MDGridLayout(cols=1, md_bg_color='white', adaptive_width=True)
             bg.add_widget(MDLabel(text=str(pt), adaptive_width=True))
             self.pts_grid.add_widget(bg)
+
+
+class HistoryChart(Popup):
+    def __init__(self, t1_name='team1', t2_name='team2', *args, **kwargs):
+        super().__init__(title='Histórico', **kwargs)
+        self.t1_name = t1_name
+        self.t2_name = t2_name
+        self.hist = list()
+        self.score_counters = list()
+        self.main_grid = MDGridLayout(cols=1, padding=10, spacing=20)
+        self.add_widget(self.main_grid)
+        self.update_score([[]])
+
+    def update_score(self, score):
+        self.hist = score
+
+    def open(self, score, *args):
+        self.main_grid.clear_widgets()
+        self.score_counters.clear()
+        scores = 0
+        for set_number, score_hist in enumerate(score):
+            if score_hist:
+                new_score = ScoreCounter(self.t1_name, self.t2_name, set_number + 1, score_hist)
+                self.main_grid.add_widget(new_score)
+                self.score_counters.append(new_score)
+                scores += 1
+
+        self.size_hint_y = .3 * scores
         super().open()
 
     def update_names(self, names1, names2):
-        self.t1_name.text = ' e '.join(names1)
-        self.t2_name.text = ' e '.join(names2)
+        self.t1_name = ' e '.join(names1)
+        self.t2_name = ' e '.join(names2)
 
 
 class SingleGame(MDRelativeLayout):
@@ -527,7 +564,7 @@ class SingleGame(MDRelativeLayout):
             MDRectangleFlatButton(line_color=[0, 0, 0, 0], md_bg_color=[.7, 0.7, 0.7, 1],
                                   text=TEXTS.get(8), size_hint=[.2, .1],
                                   pos_hint={'center': [.85, .08]}, font_style='H5',
-                                  on_release=partial(self.hist.open), text_color=[0, 0, 0, 1]))
+                                  on_release=partial(self.hist.open, self.all_points), text_color=[0, 0, 0, 1]))
 
         self.add_widget(self.shuttlecock)
         self.add_widget(
@@ -761,6 +798,7 @@ class DoubleGame(SingleGame):
         grid = MDGridLayout(rows=1, spacing=20)
         grid.add_widget(team1)
         grid.add_widget(team2)
+
         self.names_popup = Popup(title=TEXTS.get(5), content=grid, size_hint=[.5, 1], title_align='center',
                                  title_size=MDLabel(font_style="H6").font_size,
                                  on_dismiss=partial(self.change_names, team1, team2))
@@ -791,6 +829,8 @@ class EntreEmContato(MDApp):
 
 
 ContadorApp().run()
+# EntreEmContato().run()
+
 
 # if datetime.date.today() > PRAZO_MAXIMO:
 #     EntreEmContato().run()

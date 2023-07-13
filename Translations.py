@@ -14,6 +14,7 @@ pt_br = {
     12: f'''Esse aplicativo foi desativado  por estar desatualizado. Entre em contato com Mutante Apps pelo email:
 
 mutante.apps@gmail.com''',
+    13: 'Trocar'
 }
 
 en = {
@@ -31,4 +32,5 @@ en = {
     12: f'''This app is not updated anymore. Please, contact Mutante Apps at:
 
 mutante.apps@gmail.com''',
+    13: 'Change'
 }
